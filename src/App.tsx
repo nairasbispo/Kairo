@@ -1,15 +1,14 @@
 import { useState, useEffect } from 'react';
 import { AppView, SkillType, UserProfile } from './types';
-import { INITIAL_SKILL_PRIORITIES, INITIAL_CUSTOM_SCHEDULE } from './data/mockData';
-import { INITIAL_LEARNED_WORDS } from './data/vocabData';
 import { 
-  supabase, 
-  isSupabaseConfigured, 
-  syncUserProfileToSupabase, 
-  fetchUserProfileFromSupabase,
+  auth,
+  fetchUserProfileFromFirebase,
+  syncUserProfileToFirebase,
   createCleanUserProfile,
-  DEMO_USER_PROFILE
-} from './lib/supabase';
+  DEMO_USER_PROFILE,
+  signOutUser
+} from './lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import { LandingView } from './components/LandingView';
 import { OnboardingView } from './components/OnboardingView';
 import { DashboardView } from './components/DashboardView';
@@ -33,36 +32,17 @@ export default function App() {
   const [initialStudySkill, setInitialStudySkill] = useState<SkillType>('listening');
   const [isCoachOpen, setIsCoachOpen] = useState<boolean>(false);
 
-  // Supabase Auth Listener
+  // Firebase Auth Listener
   useEffect(() => {
-    if (!isSupabaseConfigured || !supabase) return;
-
-    const initUserFromSession = async (sessionUser: any) => {
-      const email = sessionUser.email || '';
-      const name = sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || email.split('@')[0];
-      const profile = await fetchUserProfileFromSupabase(email, name);
-      setUser(profile);
-    };
-
-    // Fetch active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        initUserFromSession(session.user);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser && firebaseUser.email) {
+        const name = firebaseUser.displayName || firebaseUser.email.split('@')[0];
+        const profile = await fetchUserProfileFromFirebase(firebaseUser.email, name);
+        setUser(profile);
       }
     });
 
-    // Listen to session changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        initUserFromSession(session.user);
-      } else {
-        setUser(prev => ({ ...prev, isLoggedIn: false }));
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => unsubscribe();
   }, []);
 
   // Sync to localStorage
@@ -73,7 +53,7 @@ export default function App() {
   const handleUpdateUser = (updated: Partial<UserProfile>) => {
     setUser(prev => {
       const newUser = { ...prev, ...updated };
-      syncUserProfileToSupabase(newUser);
+      syncUserProfileToFirebase(newUser);
       return newUser;
     });
   };
@@ -84,15 +64,13 @@ export default function App() {
   };
 
   const handleLogin = async (name: string, email: string) => {
-    const profile = await fetchUserProfileFromSupabase(email, name);
+    const profile = await fetchUserProfileFromFirebase(email, name);
     setUser(profile);
     localStorage.setItem('kairo_user', JSON.stringify(profile));
   };
 
   const handleLogout = async () => {
-    if (isSupabaseConfigured && supabase) {
-      await supabase.auth.signOut();
-    }
+    await signOutUser();
     localStorage.removeItem('kairo_user');
     const cleanGuest = createCleanUserProfile('Visitante', '');
     cleanGuest.isLoggedIn = false;

@@ -1,0 +1,26 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // User profiles & subcollections
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Fallback for demo / unauthenticated preview if needed or strict auth
+      allow read, write: if request.auth == null || request.auth.uid != null;
+
+      match /learnedWords/{wordId} {
+        allow read, write: if request.auth == null || request.auth.uid != null;
+      }
+    }
+
+    // Test connection doc
+    match /test/connection {
+      allow read: if true;
+    }
+  }
+}
