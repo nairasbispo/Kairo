@@ -12,12 +12,19 @@ export const AuthView: React.FC<AuthViewProps> = ({
   onNavigate
 }) => {
   const [mode, setMode] = useState<AuthMode>('signin');
-  const [email, setEmail] = useState<string>('alex.estudante@kairo.edu');
-  const [password, setPassword] = useState<string>('••••••••');
-  const [name, setName] = useState<string>('Alex Silva');
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [name, setName] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const fillDemoData = () => {
+    setEmail('alex.estudante@kairo.edu');
+    setPassword('demo123456');
+    setName('Alex Silva');
+    setErrorMessage(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -259,6 +266,17 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 {mode === 'signin' ? 'Acessar Kairo' : mode === 'signup' ? 'Criar Minha Conta' : 'Enviar Link'}
               </span>
             </button>
+
+            <div className="pt-2 text-center">
+              <button
+                type="button"
+                onClick={fillDemoData}
+                className="text-xs text-[#9a4029] font-medium hover:underline flex items-center justify-center gap-1 mx-auto"
+              >
+                <span className="material-symbols-outlined text-[16px]">science</span>
+                <span>Preencher com conta de teste (Alex Silva)</span>
+              </button>
+            </div>
           </form>
         )}
 

@@ -2,7 +2,14 @@ import { useState, useEffect } from 'react';
 import { AppView, SkillType, UserProfile } from './types';
 import { INITIAL_SKILL_PRIORITIES, INITIAL_CUSTOM_SCHEDULE } from './data/mockData';
 import { INITIAL_LEARNED_WORDS } from './data/vocabData';
-import { supabase, isSupabaseConfigured, syncUserProfileToSupabase } from './lib/supabase';
+import { 
+  supabase, 
+  isSupabaseConfigured, 
+  syncUserProfileToSupabase, 
+  fetchUserProfileFromSupabase,
+  createCleanUserProfile,
+  DEMO_USER_PROFILE
+} from './lib/supabase';
 import { LandingView } from './components/LandingView';
 import { OnboardingView } from './components/OnboardingView';
 import { DashboardView } from './components/DashboardView';
@@ -13,44 +20,6 @@ import { VocabRepositoryView } from './components/VocabRepositoryView';
 import { AuthView } from './components/AuthView';
 import { GeminiModal } from './components/GeminiModal';
 
-const INITIAL_USER: UserProfile = {
-  name: 'Alex Silva',
-  email: 'alex.estudante@kairo.edu',
-  isLoggedIn: true,
-  streakDays: 12,
-  targetLanguage: 'EN',
-  goal: 'conversar',
-  customGoal: '',
-  learningMethods: ['podcasts', 'conversacao', 'artigos', 'ia'],
-  dailyMinutes: 45,
-  studyDays: ['M', 'T', 'W', 'T', 'F'],
-  selfLevel: 'intermediate',
-  skillPriorities: INITIAL_SKILL_PRIORITIES,
-  diagnosticScore: {
-    overallLevel: 'B1 Intermediário',
-    comprehension: 82,
-    reading: 78,
-    vocabulary: 65,
-    grammar: 70
-  },
-  languageLevels: {
-    EN: 'B1',
-    FR: 'A2',
-    ES: 'A1',
-    IT: 'A1'
-  },
-  hoursPerLanguage: {
-    EN: 12.5,
-    FR: 6.2,
-    ES: 3.5,
-    IT: 2.0
-  },
-  learnedWords: INITIAL_LEARNED_WORDS,
-  customSchedule: INITIAL_CUSTOM_SCHEDULE,
-  totalHoursStudied: 18.5,
-  weeklyGoalHours: 5.0
-};
-
 export default function App() {
   const [currentView, setCurrentView] = useState<AppView>('landing');
   const [user, setUser] = useState<UserProfile>(() => {
@@ -58,7 +27,7 @@ export default function App() {
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { /* ignore */ }
     }
-    return INITIAL_USER;
+    return DEMO_USER_PROFILE;
   });
 
   const [initialStudySkill, setInitialStudySkill] = useState<SkillType>('listening');
@@ -68,35 +37,24 @@ export default function App() {
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return;
 
+    const initUserFromSession = async (sessionUser: any) => {
+      const email = sessionUser.email || '';
+      const name = sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || email.split('@')[0];
+      const profile = await fetchUserProfileFromSupabase(email, name);
+      setUser(profile);
+    };
+
     // Fetch active session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        setUser(prev => {
-          const updated = {
-            ...prev,
-            email: session.user.email || prev.email,
-            name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || prev.name,
-            isLoggedIn: true
-          };
-          syncUserProfileToSupabase(updated);
-          return updated;
-        });
+        initUserFromSession(session.user);
       }
     });
 
     // Listen to session changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        setUser(prev => {
-          const updated = {
-            ...prev,
-            email: session.user.email || prev.email,
-            name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || prev.name,
-            isLoggedIn: true
-          };
-          syncUserProfileToSupabase(updated);
-          return updated;
-        });
+        initUserFromSession(session.user);
       } else {
         setUser(prev => ({ ...prev, isLoggedIn: false }));
       }
@@ -125,19 +83,20 @@ export default function App() {
     setCurrentView('study');
   };
 
-  const handleLogin = (name: string, email: string) => {
-    setUser(prev => {
-      const updated = { ...prev, name, email, isLoggedIn: true };
-      syncUserProfileToSupabase(updated);
-      return updated;
-    });
+  const handleLogin = async (name: string, email: string) => {
+    const profile = await fetchUserProfileFromSupabase(email, name);
+    setUser(profile);
+    localStorage.setItem('kairo_user', JSON.stringify(profile));
   };
 
   const handleLogout = async () => {
     if (isSupabaseConfigured && supabase) {
       await supabase.auth.signOut();
     }
-    setUser(prev => ({ ...prev, isLoggedIn: false }));
+    localStorage.removeItem('kairo_user');
+    const cleanGuest = createCleanUserProfile('Visitante', '');
+    cleanGuest.isLoggedIn = false;
+    setUser(cleanGuest);
     setCurrentView('landing');
   };
 
