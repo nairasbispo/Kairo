@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-serif: 'Source Serif 4', Georgia, serif;
+    --font-sans: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
+
+    /* Kairo Academic Zen Color Palette */
+    --color-surface: #fff8f5;
+    --color-surface-dim: #e1d8d4;
+    --color-surface-bright: #fff8f5;
+    --color-surface-container-lowest: #ffffff;
+    --color-surface-container-low: #fbf2ed;
+    --color-surface-container: #f5ece7;
+    --color-surface-container-high: #efe6e2;
+    --color-surface-container-highest: #e9e1dc;
+    --color-on-surface: #1e1b18;
+    --color-on-surface-variant: #56423d;
+    --color-outline: #89726c;
+    --color-outline-variant: #dcc1ba;
+    
+    --color-primary: #9a4029;
+    --color-on-primary: #ffffff;
+    --color-primary-container: #b9583e;
+    --color-on-primary-container: #fffbff;
+    
+    --color-secondary: #6c5b4e;
+    --color-on-secondary: #ffffff;
+    --color-secondary-container: #f2dccb;
+    --color-on-secondary-container: #706052;
+    
+    --color-tertiary: #5d5c58;
+    --color-error: #ba1a1a;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--color-surface);
+    color: var(--color-on-surface);
+  }
+
+  h1, h2, h3, .font-serif {
+    font-family: var(--font-serif);
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #dcc1ba;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #89726c;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.glass-card {
+  background: rgba(245, 236, 231, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(220, 193, 186, 0.6);
+}
+
+.glass-card-hover {
+  transition: all 0.3s ease-in-out;
+}
+.glass-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(45, 41, 38, 0.06);
+  border-color: rgba(154, 64, 41, 0.3);
+}

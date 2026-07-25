@@ -1,0 +1,6 @@
+{
+  "name": "Kairo Management System",
+  "description": "Academic Zen language acquisition platform with personalized study plans, diagnostic placement tests, active practice studio, and progress analytics.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
