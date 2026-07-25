@@ -75,6 +75,12 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
 
           {/* Right Controls */}
           <div className="flex items-center gap-4">
+            {/* Database Sync Status Badge */}
+            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#e9e1dc]/60 text-[#56423d]">
+              <span className="w-2 h-2 rounded-full bg-[#34a853] animate-pulse"></span>
+              <span>Supabase Conectado</span>
+            </div>
+
             {user.isLoggedIn ? (
               <div className="flex items-center gap-3">
                 {/* Streak Badge */}

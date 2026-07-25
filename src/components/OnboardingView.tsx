@@ -37,8 +37,79 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const [showAnswerFeedback, setShowAnswerFeedback] = useState<boolean>(false);
   const [showPauseModal, setShowPauseModal] = useState<boolean>(false);
+  const [userAnswers, setUserAnswers] = useState<Record<number, boolean>>({});
 
   const progressPercent = Math.round(((step + 1) / (totalSteps + 1)) * 100);
+
+  // Diagnostic questions for selected language
+  const activeQuestions = ALL_DIAGNOSTIC_QUESTIONS[testLanguage] || ALL_DIAGNOSTIC_QUESTIONS.EN;
+  const currentQuestion = activeQuestions[currentQuestionIdx] || activeQuestions[0];
+  const selectedOption = currentQuestion.options.find(o => o.id === selectedOptionId);
+
+  // Dynamic Score & Level Calculation
+  const totalQuestions = activeQuestions.length;
+  const answeredCount = Object.keys(userAnswers).length;
+  const correctCount = Object.values(userAnswers).filter(Boolean).length;
+  const overallPercentage = answeredCount > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
+
+  // Calculate scores per skill category
+  const getCategoryScore = (category: string) => {
+    const catQuestions = activeQuestions.filter(q => q.skillCategory === category);
+    if (catQuestions.length === 0) return Math.min(100, Math.max(20, overallPercentage));
+    let catCorrect = 0;
+    catQuestions.forEach((q) => {
+      const qIdx = activeQuestions.findIndex(item => item.id === q.id);
+      if (userAnswers[qIdx]) catCorrect++;
+    });
+    return Math.round((catCorrect / catQuestions.length) * 100);
+  };
+
+  const calculatedReading = getCategoryScore('reading');
+  const calculatedVocab = getCategoryScore('writing');
+  const calculatedGrammar = getCategoryScore('grammar');
+  const calculatedComprehension = Math.round((calculatedReading + calculatedVocab + calculatedGrammar + overallPercentage) / 4);
+
+  // Map percentage to CEFR Level Tag and Description
+  const getLevelInfo = (pct: number) => {
+    if (pct >= 88) {
+      return {
+        tag: 'C1',
+        title: 'C1 Avançado',
+        sub: 'Você demonstra domínio avançado, boa fluência e precisão conceitual e sintática no idioma.',
+        nextTrajectory: 'C2 em 8 meses'
+      };
+    } else if (pct >= 70) {
+      return {
+        tag: 'B2',
+        title: 'B2 Independente',
+        sub: 'Você possui ótima capacidade de compreensão, boa espontaneidade em conversações e domina vocabulário intermediário-avançado.',
+        nextTrajectory: 'C1 em 6 meses'
+      };
+    } else if (pct >= 48) {
+      return {
+        tag: 'B1',
+        title: 'B1 Intermediário',
+        sub: 'Você compreende os pontos principais em assuntos familiares de trabalho, estudos e lazer no idioma.',
+        nextTrajectory: 'B2 em 5 meses'
+      };
+    } else if (pct >= 25) {
+      return {
+        tag: 'A2',
+        title: 'A2 Básico',
+        sub: 'Você compreende frases e expressões de uso frequente relacionadas com áreas de prioridade imediata.',
+        nextTrajectory: 'B1 em 4 meses'
+      };
+    } else {
+      return {
+        tag: 'A1',
+        title: 'A1 Iniciante',
+        sub: 'Você está construindo as bases fundamentais do idioma para iniciar suas primeiras frases com confiança.',
+        nextTrajectory: 'A2 em 3 meses'
+      };
+    }
+  };
+
+  const calculatedLevel = getLevelInfo(overallPercentage);
 
   const handleNextStep = () => {
     if (step < totalSteps) {
@@ -46,14 +117,25 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
     } else {
       // Save and finish
       onUpdateUser({
-        targetLanguage: selectedLanguages[0] || 'EN',
+        targetLanguage: testLanguage,
         goal: goal === 'custom' ? customGoalText : goal,
         customGoal: customGoalText,
         learningMethods: selectedMethods,
         dailyMinutes: dailyMins,
         studyDays: selectedDays,
-        selfLevel,
-        skillPriorities: priorities
+        selfLevel: calculatedLevel.tag.toLowerCase(),
+        skillPriorities: priorities,
+        diagnosticScore: {
+          overallLevel: calculatedLevel.title,
+          comprehension: calculatedComprehension,
+          reading: calculatedReading,
+          vocabulary: calculatedVocab,
+          grammar: calculatedGrammar
+        },
+        languageLevels: {
+          ...user.languageLevels,
+          [testLanguage]: calculatedLevel.tag
+        }
       });
       onFinishOnboarding();
     }
@@ -84,15 +166,18 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
     setPriorities(newArr);
   };
 
-  // Diagnostic questions for selected language
-  const activeQuestions = ALL_DIAGNOSTIC_QUESTIONS[testLanguage] || ALL_DIAGNOSTIC_QUESTIONS.EN;
-  const currentQuestion = activeQuestions[currentQuestionIdx] || activeQuestions[0];
-  const selectedOption = currentQuestion.options.find(o => o.id === selectedOptionId);
-
   const handleSelectOption = (optId: string) => {
     if (showAnswerFeedback) return;
     setSelectedOptionId(optId);
     setShowAnswerFeedback(true);
+
+    const chosenOpt = currentQuestion.options.find(o => o.id === optId);
+    if (chosenOpt) {
+      setUserAnswers(prev => ({
+        ...prev,
+        [currentQuestionIdx]: chosenOpt.isCorrect
+      }));
+    }
   };
 
   const handleNextQuestion = () => {
@@ -860,18 +945,18 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
           </div>
         )}
 
-        {/* STEP 9: Diagnostic Assessment Result (Matching Image 6 variant) */}
+        {/* STEP 9: Diagnostic Assessment Result */}
         {step === 9 && (
           <div className="w-full max-w-3xl space-y-8 animate-fade-in text-center">
             <div className="space-y-2">
               <span className="text-xs font-semibold text-[#9a4029] uppercase tracking-widest bg-[#f2dccb] px-3 py-1 rounded-full">
-                Avaliação Concluída
+                Avaliação Concluída ({testLanguage})
               </span>
               <h2 className="font-serif text-4xl sm:text-5xl font-semibold text-[#1e1b18]">
-                Nível Confirmado: B1 Intermediário
+                Nível Confirmado: {calculatedLevel.title}
               </h2>
               <p className="text-xs text-[#56423d] max-w-xl mx-auto leading-relaxed">
-                Você possui capacidade de compreender pontos principais em assuntos familiares de trabalho, estudos e lazer no idioma Inglês.
+                {calculatedLevel.sub}
               </p>
             </div>
 
@@ -889,7 +974,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                     />
                     <path
                       className="text-[#9a4029]"
-                      strokeDasharray="82, 100"
+                      strokeDasharray={`${calculatedComprehension}, 100`}
                       strokeWidth="3.5"
                       strokeLinecap="round"
                       stroke="currentColor"
@@ -898,17 +983,19 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                     />
                   </svg>
                   <div className="absolute flex flex-col items-center">
-                    <span className="font-serif text-2xl font-bold text-[#1e1b18]">82%</span>
-                    <span className="text-[10px] font-bold text-[#9a4029] uppercase">Excelente</span>
+                    <span className="font-serif text-2xl font-bold text-[#1e1b18]">{calculatedComprehension}%</span>
+                    <span className="text-[10px] font-bold text-[#9a4029] uppercase">
+                      {calculatedComprehension >= 80 ? 'Excelente' : calculatedComprehension >= 50 ? 'Bom' : 'Em Construção'}
+                    </span>
                   </div>
                 </div>
               </div>
 
               <div className="space-y-3">
                 {[
-                  { label: 'Reading (Leitura)', score: 78 },
-                  { label: 'Vocabulary (Vocabulário)', score: 65 },
-                  { label: 'Grammar (Gramática)', score: 70 },
+                  { label: 'Reading (Leitura)', score: calculatedReading },
+                  { label: 'Vocabulary (Vocabulário)', score: calculatedVocab },
+                  { label: 'Grammar (Gramática)', score: calculatedGrammar },
                 ].map((sk, idx) => (
                   <div key={idx} className="p-4 rounded-xl bg-[#fff8f5] border border-[#efe6e2] space-y-1 text-left">
                     <div className="flex justify-between text-xs font-semibold text-[#1e1b18]">
@@ -935,7 +1022,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
           </div>
         )}
 
-        {/* STEP 10: Plan Summary (Matching Image 1) */}
+        {/* STEP 10: Plan Summary */}
         {step === 10 && (
           <div className="w-full max-w-4xl space-y-8 animate-fade-in">
             <div className="text-center space-y-2">
@@ -960,33 +1047,31 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-4 rounded-2xl bg-[#f5ece7] border border-[#dcc1ba]/60 space-y-1">
                     <span className="text-[10px] font-bold text-[#89726c] uppercase block">Idioma Alvo</span>
-                    <span className="font-serif text-lg font-semibold text-[#1e1b18] block">Inglês</span>
-                    <span className="text-xs text-[#56423d] block">Estados Unidos</span>
+                    <span className="font-serif text-lg font-semibold text-[#1e1b18] block">
+                      {testLanguage === 'EN' ? 'Inglês' : testLanguage === 'FR' ? 'Francês' : testLanguage === 'ES' ? 'Espanhol' : 'Italiano'}
+                    </span>
+                    <span className="text-xs text-[#56423d] block">{testLanguage}</span>
                   </div>
 
                   <div className="p-4 rounded-2xl bg-[#f5ece7] border border-[#dcc1ba]/60 space-y-1">
                     <span className="text-[10px] font-bold text-[#89726c] uppercase block">Objetivo</span>
-                    <span className="font-serif text-lg font-semibold text-[#1e1b18] block">
-                      Fluência Profissional
+                    <span className="font-serif text-lg font-semibold text-[#1e1b18] block capitalize">
+                      {goal === 'conversar' ? 'Conversar Fluentemente' : goal === 'viajar' ? 'Viajar' : goal === 'ler' ? 'Leitura' : goal}
                     </span>
-                    <div className="flex gap-1 pt-1">
-                      <span className="text-[10px] font-semibold bg-[#e9e1dc] text-[#56423d] px-2 py-0.5 rounded-full">Negócios</span>
-                      <span className="text-[10px] font-semibold bg-[#e9e1dc] text-[#56423d] px-2 py-0.5 rounded-full">Viagem</span>
-                    </div>
                   </div>
 
                   <div className="p-4 rounded-2xl bg-[#f5ece7] border border-[#dcc1ba]/60 space-y-1">
-                    <span className="text-[10px] font-bold text-[#89726c] uppercase block">Dedicacão Diária</span>
+                    <span className="text-[10px] font-bold text-[#89726c] uppercase block">Dedicação Diária</span>
                     <span className="font-serif text-lg font-semibold text-[#1e1b18] block">{dailyMins} Minutos</span>
                     <div className="w-full h-1.5 bg-[#e9e1dc] rounded-full overflow-hidden mt-2">
-                      <div className="h-full bg-[#9a4029]" style={{ width: '60%' }}></div>
+                      <div className="h-full bg-[#9a4029]" style={{ width: `${Math.min(100, (dailyMins / 60) * 100)}%` }}></div>
                     </div>
                   </div>
 
                   <div className="p-4 rounded-2xl bg-[#ffdad6]/40 border border-[#ba1a1a]/20 space-y-1">
                     <span className="text-[10px] font-bold text-[#ba1a1a] uppercase block">Nível Confirmado</span>
-                    <span className="font-serif text-lg font-semibold text-[#1e1b18] block">B1 Intermediário</span>
-                    <span className="text-xs text-[#56423d] block">Avaliador Kairo AI</span>
+                    <span className="font-serif text-lg font-semibold text-[#1e1b18] block">{calculatedLevel.title}</span>
+                    <span className="text-xs text-[#56423d] block">Avaliador Kairo ({correctCount}/{totalQuestions} acertos)</span>
                   </div>
                 </div>
 
@@ -1005,7 +1090,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
               <div className="lg:col-span-5 glass-card p-6 rounded-3xl border border-[#dcc1ba] space-y-6 text-center shadow-lg">
                 <div className="flex justify-between items-center text-[10px] font-bold text-[#9a4029] uppercase">
                   <span>Kairo AI</span>
-                  <span className="bg-[#f2dccb] px-2 py-0.5 rounded-full">Draft</span>
+                  <span className="bg-[#f2dccb] px-2 py-0.5 rounded-full">Projeção Real</span>
                 </div>
 
                 <div className="relative w-40 h-40 mx-auto flex items-center justify-center">
@@ -1019,7 +1104,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                     />
                     <path
                       className="text-[#9a4029]"
-                      strokeDasharray="75, 100"
+                      strokeDasharray={`${calculatedComprehension}, 100`}
                       strokeWidth="3"
                       strokeLinecap="round"
                       stroke="currentColor"
@@ -1034,8 +1119,8 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                 </div>
 
                 <div className="p-4 rounded-2xl bg-[#fff8f5] border border-[#efe6e2] text-left space-y-1">
-                  <span className="text-[10px] font-bold text-[#89726c] uppercase block">Trajetória Estimada</span>
-                  <span className="font-serif text-lg font-semibold text-[#1e1b18] block">B2 em 6 meses</span>
+                  <span className="text-[10px] font-bold text-[#89726c] uppercase block">Trajetória Estimada Real</span>
+                  <span className="font-serif text-lg font-semibold text-[#1e1b18] block">{calculatedLevel.nextTrajectory}</span>
                 </div>
               </div>
             </div>

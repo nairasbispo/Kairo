@@ -32,6 +32,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div className="flex items-center gap-4">
+          {/* Supabase Status Pill */}
+          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-[#e9e1dc]/70 text-[#56423d] rounded-full text-xs font-semibold">
+            <span className="w-2 h-2 rounded-full bg-[#34a853] animate-pulse"></span>
+            <span>Supabase Ativo</span>
+          </div>
+
           {/* Streak badge */}
           <div className="flex items-center gap-1.5 px-3 py-1 bg-[#f2dccb] text-[#706052] rounded-full text-xs font-semibold">
             <span className="material-symbols-outlined text-[16px] text-[#9a4029]">local_fire_department</span>
@@ -71,11 +77,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </span>
 
               <h1 className="font-serif text-3xl sm:text-4xl font-semibold text-[#1e1b18] tracking-tight">
-                {user.dailyMinutes} minutos para avançar rumo ao nível B2 em Inglês.
+                {user.dailyMinutes} minutos para avançar em {user.targetLanguage === 'EN' ? 'Inglês' : user.targetLanguage === 'FR' ? 'Francês' : user.targetLanguage === 'ES' ? 'Espanhol' : 'Italiano'}.
               </h1>
 
               <p className="text-xs sm:text-sm text-[#56423d] leading-relaxed">
-                A atividade de hoje foca na expansão de vocabulário e escuta ativa de negócios.
+                A atividade de hoje foca na expansão de vocabulário e escuta ativa ({user.diagnosticScore?.overallLevel || 'Nível em Avaliação'}).
               </p>
 
               <div className="flex flex-wrap items-center gap-3 pt-2">
@@ -202,52 +208,54 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="lg:col-span-7 p-6 rounded-3xl bg-[#f5ece7]/60 border border-[#dcc1ba]/60 space-y-6">
               <div className="flex justify-between items-center border-b border-[#efe6e2] pb-4">
                 <div>
-                  <span className="text-[10px] font-bold text-[#89726c] uppercase block">Status do Idioma</span>
-                  <h3 className="font-serif text-xl font-semibold text-[#1e1b18]">Nível B1 Intermediário</h3>
+                  <span className="text-[10px] font-bold text-[#89726c] uppercase block">Status do Idioma ({user.targetLanguage})</span>
+                  <h3 className="font-serif text-xl font-semibold text-[#1e1b18]">
+                    {user.diagnosticScore?.overallLevel || 'Nível B1 Intermediário'}
+                  </h3>
                 </div>
                 <span className="text-xs font-bold text-[#9a4029] bg-[#f2dccb] px-3 py-1 rounded-full">
-                  62% para o B2
+                  Compreensão {user.diagnosticScore?.comprehension || 80}%
                 </span>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 rounded-2xl bg-[#fff8f5] border border-[#efe6e2] space-y-2">
                   <div className="flex justify-between items-center text-xs">
-                    <span className="font-semibold text-[#1e1b18]">Listening (Escuta)</span>
-                    <span className="font-bold text-[#9a4029]">82%</span>
+                    <span className="font-semibold text-[#1e1b18]">Compreensão</span>
+                    <span className="font-bold text-[#9a4029]">{user.diagnosticScore?.comprehension || 82}%</span>
                   </div>
                   <div className="w-full h-2 bg-[#e9e1dc] rounded-full overflow-hidden">
-                    <div className="h-full bg-[#9a4029]" style={{ width: '82%' }}></div>
+                    <div className="h-full bg-[#9a4029]" style={{ width: `${user.diagnosticScore?.comprehension || 82}%` }}></div>
                   </div>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-[#fff8f5] border border-[#efe6e2] space-y-2">
                   <div className="flex justify-between items-center text-xs">
-                    <span className="font-semibold text-[#1e1b18]">Speaking (Fala)</span>
-                    <span className="font-bold text-[#9a4029]">68%</span>
+                    <span className="font-semibold text-[#1e1b18]">Vocabulário</span>
+                    <span className="font-bold text-[#9a4029]">{user.diagnosticScore?.vocabulary || 68}%</span>
                   </div>
                   <div className="w-full h-2 bg-[#e9e1dc] rounded-full overflow-hidden">
-                    <div className="h-full bg-[#9a4029]" style={{ width: '68%' }}></div>
+                    <div className="h-full bg-[#9a4029]" style={{ width: `${user.diagnosticScore?.vocabulary || 68}%` }}></div>
                   </div>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-[#fff8f5] border border-[#efe6e2] space-y-2">
                   <div className="flex justify-between items-center text-xs">
                     <span className="font-semibold text-[#1e1b18]">Reading (Leitura)</span>
-                    <span className="font-bold text-[#9a4029]">78%</span>
+                    <span className="font-bold text-[#9a4029]">{user.diagnosticScore?.reading || 78}%</span>
                   </div>
                   <div className="w-full h-2 bg-[#e9e1dc] rounded-full overflow-hidden">
-                    <div className="h-full bg-[#9a4029]" style={{ width: '78%' }}></div>
+                    <div className="h-full bg-[#9a4029]" style={{ width: `${user.diagnosticScore?.reading || 78}%` }}></div>
                   </div>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-[#fff8f5] border border-[#efe6e2] space-y-2">
                   <div className="flex justify-between items-center text-xs">
-                    <span className="font-semibold text-[#1e1b18]">Writing (Escrita)</span>
-                    <span className="font-bold text-[#9a4029]">65%</span>
+                    <span className="font-semibold text-[#1e1b18]">Grammar (Gramática)</span>
+                    <span className="font-bold text-[#9a4029]">{user.diagnosticScore?.grammar || 70}%</span>
                   </div>
                   <div className="w-full h-2 bg-[#e9e1dc] rounded-full overflow-hidden">
-                    <div className="h-full bg-[#9a4029]" style={{ width: '65%' }}></div>
+                    <div className="h-full bg-[#9a4029]" style={{ width: `${user.diagnosticScore?.grammar || 70}%` }}></div>
                   </div>
                 </div>
               </div>
