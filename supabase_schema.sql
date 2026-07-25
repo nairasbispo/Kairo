@@ -91,18 +91,22 @@ ALTER TABLE public.vocabulary_repository ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.study_schedules ENABLE ROW LEVEL SECURITY;
 
 -- Políticas para user_profiles
+DROP POLICY IF EXISTS "Usuários acessam apenas o próprio perfil" ON public.user_profiles;
 CREATE POLICY "Usuários acessam apenas o próprio perfil" ON public.user_profiles
     FOR ALL USING (auth.uid() = id);
 
 -- Políticas para language_progress
+DROP POLICY IF EXISTS "Usuários acessam apenas seu próprio progresso" ON public.language_progress;
 CREATE POLICY "Usuários acessam apenas seu próprio progresso" ON public.language_progress
     FOR ALL USING (auth.uid() = user_id);
 
 -- Políticas para vocabulary_repository
+DROP POLICY IF EXISTS "Usuários acessam apenas seu próprio vocabulário" ON public.vocabulary_repository;
 CREATE POLICY "Usuários acessam apenas seu próprio vocabulário" ON public.vocabulary_repository
     FOR ALL USING (auth.uid() = user_id);
 
 -- Políticas para study_schedules
+DROP POLICY IF EXISTS "Usuários acessam apenas seu próprio cronograma" ON public.study_schedules;
 CREATE POLICY "Usuários acessam apenas seu próprio cronograma" ON public.study_schedules
     FOR ALL USING (auth.uid() = user_id);
 
